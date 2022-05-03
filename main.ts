@@ -1,8 +1,10 @@
+import { basename } from "https://deno.land/std@0.137.0/path/mod.ts";
 interface Token {
   name: string;
   params: string[];
   output: string[];
 }
+
 const typify = (str: string[]): string[] =>
   str.map((item) => {
     switch (item) {
@@ -64,30 +66,22 @@ class Parser {
     return this.#output;
   }
 }
-
-class Instance {
-  #file: string;
-  #ast: Token[];
-  symbols: string[] = [];
-  constructor(fileName: string) {
-    const name = fileName.split(".")[0];
-    this.#file = Deno.readTextFileSync(fileName);
-    this.#ast = new Parser(this.#file).output;
-    for (const token of this.#ast) {
-      this.symbols.push(
-        `"${token.name}": { parameters: [${token.params}], result: ${
-          token.output[0]
-        } },`,
-      );
-    }
-    const file =
-      `export const modulefile = Deno.dlopen("${name}.${getExtension()}", {
-${this.symbols.join("\n")}
-});
-export { modulefile as default };
-`;
-    Deno.writeTextFileSync(`${name}_bindings.ts`, file);
-  }
+const symbols = [];
+const fileName = Deno.args[0];
+const fileNameFormat = basename(fileName);
+const name = fileNameFormat.split(".")[0];
+const fileContent = Deno.readTextFileSync(fileName);
+const ast = new Parser(fileContent).output;
+for (const token of ast) {
+  symbols.push(
+    `"${token.name}": { parameters: [${token.params}], result: ${
+      token.output[0]
+    } },`,
+  );
 }
-
-new Instance(Deno.args[0]);
+const file = `export const _lib = Deno.dlopen("./${fileNameFormat.replace("v", getExtension())}", {
+${symbols.join("\n")}
+});
+export { _lib as default };`;
+Deno.writeTextFileSync(`${fileName.replace(fileNameFormat,`${name}_bindings.ts`)}`, file);
+console.log(`🚀 successfully generated: ${fileName.replace(fileNameFormat,`${name}_bindings.ts`)}`);
