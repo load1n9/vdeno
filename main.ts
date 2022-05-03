@@ -19,7 +19,7 @@ function getExtension(): string {
   return libSuffix;
 }
 
-export class Parser {
+class Parser {
   #input: string[];
   #output: Token[] = [];
   constructor(input: string) {
@@ -55,13 +55,23 @@ export class Parser {
   }
 }
 
-export class Instance {
+class Instance {
   #file: string;
   #ast: Token[];
+  // deno-lint-ignore no-explicit-any
+  symbols: any = {};
   constructor(fileName: string) {
-    this.#file = Deno.readTextFileSync(
-      `${fileName.split(".")[0]}.${getExtension()}`,
-    );
+    const name = fileName.split(".")[0];
+    this.#file = Deno.readTextFileSync(fileName);
     this.#ast = new Parser(this.#file).output;
+    for (const token of this.#ast) {
+      this.symbols[token.name] = {
+        parameters: token.params,
+        result: token.output,
+      };
+    }
+    Deno.writeTextFileSync(`${name}.json`, JSON.stringify(this.symbols));
   }
 }
+
+new Instance(Deno.args[0]);
