@@ -3,6 +3,16 @@ interface Token {
   params: string[];
   output: string[];
 }
+const typify = (str: string[]): string[] =>
+  str.map((item) => {
+    switch (item) {
+      case "int":
+        return `"i32"`;
+      default:
+        return `"${item}"`;
+    }
+  });
+
 function getExtension(): string {
   let libSuffix = "dll";
   switch (Deno.build.os) {
@@ -46,8 +56,8 @@ class Parser {
     ).split("->");
     return {
       name: name.trim(),
-      params: parameters.replace(/ /g, "").split(","),
-      output: output.replace(/ /g, "").split(","),
+      params: typify(parameters.replace(/ /g, "").split(",")),
+      output: typify(output.replace(/ /g, "").split(",")),
     };
   }
   get output() {
@@ -58,19 +68,25 @@ class Parser {
 class Instance {
   #file: string;
   #ast: Token[];
-  // deno-lint-ignore no-explicit-any
-  symbols: any = {};
+  symbols: string[] = [];
   constructor(fileName: string) {
     const name = fileName.split(".")[0];
     this.#file = Deno.readTextFileSync(fileName);
     this.#ast = new Parser(this.#file).output;
     for (const token of this.#ast) {
-      this.symbols[token.name] = {
-        parameters: token.params,
-        result: token.output,
-      };
+      this.symbols.push(
+        `"${token.name}": { parameters: [${token.params}], result: ${
+          token.output[0]
+        } },`,
+      );
     }
-    Deno.writeTextFileSync(`${name}.json`, JSON.stringify(this.symbols));
+    const file =
+      `export const modulefile = Deno.dlopen("${name}.${getExtension()}", {
+${this.symbols.join("\n")}
+});
+export { modulefile as default };
+`;
+    Deno.writeTextFileSync(`${name}_bindings.ts`, file);
   }
 }
 

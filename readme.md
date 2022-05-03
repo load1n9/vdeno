@@ -1,5 +1,5 @@
 # v_bindgen for deno
-generates deno bindings for the v programming language
+generates deno bindings for the v programming language (not advanced yet but it work)
 
 ## example
 ```v
@@ -7,7 +7,7 @@ module test
 
 import math
 
-// square -> (i32) -> i32
+// square -> (int) -> int
 [export: 'square']
 fn square(i int) int {
 	return i * i
@@ -30,6 +30,15 @@ deno run -A --unstable https://deno.land/x/vlang/main.ts test.v
 ```
 
 ### output
-```json
-{"square":{"parameters":["i32"],"result":["i32"]},"sqrt_of_sum_of_squares":{"parameters":["f64","f64"],"result":["f64"]}}
+```ts
+
+export const modulefile = Deno.dlopen("test.so", {
+"square": { parameters: ["i32"], result: "i32" },
+"sqrt_of_sum_of_squares": { parameters: ["f64","f64"], result: "f64" },
+});
+export { modulefile as default };
+
 ```
+### Maintainers
+
+- [load1n9](https://github.com/load1n9)
